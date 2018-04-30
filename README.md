@@ -37,7 +37,7 @@ The kind of data which comes back is below:
 192.168.0.87 - - [30/Apr/2018:01:20:18 +0000] "GET /localdrive/Media/rumtest/pixel.png?eyJhcHBJZCI6Im1haW5QYWdlIiwiZXJyb3JzIjpbXSwiZG5zTXMiOjAsImxvYWRNcyI6NDY4LCJtb2RzIjpbInBlcmYiLCJpcCJdLCJick5hbWUiOiJDaHJvbWUiLCJiclZlciI6IjY2LjAuMzM1OS4xMzkiLCJickNvb2tpZXMiOnRydWUsIk9TIjoiV2luZG93cyIsInJlcyI6eyJhbXpuY291ayI6eyJzdGFydE1zIjoxNTI1MDUxMjIwMTQ3LCJzdGF0IjoyMDAsImR1ck1zIjoiMjMuMTAiLCJ0dGZiTXMiOiIyMi42MCIsImRuc01zIjoiMC4wMCIsInhmZXJCeXRlcyI6NDAxfSwiZ2l0aHViQzM2MHBpeGVsIjp7InN0YXJ0TXMiOjE1MjUwNTEyMjAxNDcsInN0YXQiOjIwMCwiZHVyTXMiOiIxMTMuMTAifSwiZ2l0aHViQ0ROIjp7InN0YXJ0TXMiOjE1MjUwNTEyMjAxNDcsInN0YXQiOjIwMCwiZHVyTXMiOiI0MDUuOTAiLCJ0dGZiTXMiOiI0MDUuMjAiLCJkbnNNcyI6IjAuMDAiLCJ4ZmVyQnl0ZXMiOjY0N319LCJjbElQIjoiMTkyLjE2OC4wLjg3In0= HTTP/1.1" 200 120 "http://coreos.local/localdrive/Media/rumtest/rumtest.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36"
 ```
 
-The data after the question mark is base64 encoded JSON, the above JSON decodes to:
+The data after the question mark is base64 encoded JSON, the above log decodes to the following JSON:
 ```
 {
   "appId": "mainPage",
@@ -101,3 +101,15 @@ The following fields are broken down:
  - - dnsMs - dns lookup time (perf module needed)
  - - xferBytes - number of bytes transferred (perf module needed)
  - clIP - client private IP added (ip module needed)
+
+## AWS Backend to Process
+In order to collect and query the data a serverless architecture has been defined. This makes use of AWS services and means that servers don't have to be patched etc. An architecture diagram is below:
+
+![AWS Serverless Architecture Diagram](AWS-receiver/AWS-Architecture-Diagram.png?raw=true "Architecture Diagram")
+
+The deployment is documented in a cloudformation JSON template, in order to execure the template several parameters need to be specified:
+
+ - SrcJSURL (String) - the javascript file to be installed in the origin S3 bucket, default is https://github.com/cloudthreesixty/GlimpseRUM/raw/master/rum.js
+ - SrcBeaconURL (String) - the file to be installed in the origin S3 bucket, default is https://github.com/cloudthreesixty/GlimpseRUM/raw/master/pixel.png
+ - CFdistroFQDN (String) - the cloudfront distribution's full qualified domain name to answer to, example is www.example.com
+ - CertificateArn (String) - the Amazon Resource Name (ARN) of an existing SSL certificate stored in certificate manager for the host defined in CFdistroFQDN
