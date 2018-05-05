@@ -141,6 +141,137 @@
                 }
             }
         }
+    },
+    "LambdaResourceDeployExecutionRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+          "AssumeRolePolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                      "Service": ["lambda.amazonaws.com"]
+                  },
+                  "Action": ["sts:AssumeRole"]
+                }
+              ]
+          },
+          "Path": "/"
+        }
+    },
+
+    "LambdaResourceDeployExecutionPolicy": {
+        "DependsOn": [
+            "LambdaResourceDeployExecutionRole"
+        ],
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyName": "LambdaBillingS3ResourceUpdatePolicy",
+          "Roles": [
+              {"Ref": "LambdaResourceDeployExecutionRole"}
+          ],
+          "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": ["logs:*"],
+                  "Resource": ["arn:aws:logs:*:*:*"]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+					"s3:GetObject",
+					"s3:GetObjectAcl",
+					"s3:PutBucketCORS",
+					"s3:PutObject",
+					"s3:PutObjectAcl",
+					"s3:PutObjectTagging",
+					"s3:PutObjectVersionAcl",
+					"s3:PutObjectVersionTagging"
+                  ],
+                  "Resource": [
+                    {"Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "originS3Bucket" } ] ]},
+                    {"Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "originS3Bucket" }, "/*" ] ]}
+                  ]
+                }
+              ]
+          }
+        }
+    },
+    "ResourceS3DeployFilesFunction": {
+      "DependsOn": [
+          "LambdaResourceDeployExecutionRole"
+      ],
+      "Type" : "AWS::Lambda::Function",
+      "Properties" : {
+        "Code" : {
+          "ZipFile": { "Fn::Join": ["", [
+            "from __future__ import print_function\n",
+            "import json, urllib.request, boto3\n",
+            "import cfnresponse\n",
+            "s3 = boto3.resource('s3')\n",
+            "bucket = '",{ "Ref" : "originS3Bucket" },"'\n",
+            "def lambda_handler(event, context):\n",
+            "    print('Received event: ' + json.dumps(event, indent=2))\n",
+            "    if event['RequestType'] == 'Create':\n",
+            "      print('Create files in bucket: '+bucket)\n",
+            "      try:\n",
+            "        urls = ['",{ "Ref" : "SrcJSURL" },"', '",{ "Ref" : "SrcBeaconURL" },"']\n",
+            "        for url in urls:\n",
+            "          print('Downloading file: '+url)\n",
+            "          fileSplit = url.split('/')\n",
+            "          filename = fileSplit[-1]\n",
+            "          fileExtSplit = filename.split('.')\n",
+            "          fileExt = fileExtSplit[-1]\n",
+            "          contentType = 'text/plain'\n",
+            "          if (fileExt == 'js'):\n",
+            "            contentType = 'application/javascript'\n",
+            "          if (fileExt == 'json'):\n",
+            "            contentType = 'application/json'\n",
+            "          if (fileExt == 'png'):\n",
+            "            contentType = 'image/png'\n",
+            "          if (fileExt == 'jpg'):\n",
+            "            contentType = 'image/jpeg'\n",
+            "          response = urllib.request.urlopen(url)\n",
+            "          data = response.read()\n",
+            "          print ('got data: '+filename+' sending to bucket: '+bucket)\n",
+            "          object = s3.Object(bucket, filename)\n",
+            "          object.put(Body=data, ACL='public-read', ContentType=contentType)\n",
+            "      except Exception as e:\n",
+            "        print(e)\n",
+            "        cfnresponse.send(event, context, cfnresponse.FAILURE, {})\n",
+            "        raise e\n",
+            "    if event['RequestType'] == 'Delete':\n",
+            "      print('Delete objects in bucket: ",{ "Ref" : "originS3Bucket" },"')\n",
+            "      try:\n",
+            "        print('Deleting files: ')\n",
+            "      except Exception as e:\n",
+            "        print(e)\n",
+            "        cfnresponse.send(event, context, cfnresponse.FAILURE, {})\n",
+            "        raise e\n",
+            "    # Signal to CloudFormation endpoint on success\n",
+            "    cfnresponse.send(event, context, cfnresponse.SUCCESS, {})\n"
+            ]]
+          }
+        },
+        "Description" : "Apply notification config to consolidated billing bucket",
+        "FunctionName" : "ResourceS3DeployFilesFunction",
+        "Handler" : "index.lambda_handler",
+        "MemorySize" : 128,
+        "Role" : { "Fn::GetAtt" : [ "LambdaResourceDeployExecutionRole", "Arn" ]},
+        "Runtime" : "python3.6",
+        "Timeout" : 20
+      }
+    },
+
+    "uploadObjectsToS3": {
+        "Type": "Custom::uploadObjectsToS3",
+        "Properties": {
+            "Await": false,
+            "ServiceToken": { "Fn::GetAtt" : [ "ResourceS3DeployFilesFunction", "Arn" ]}
+        }
     }
   },
 
