@@ -5,7 +5,7 @@ var resultToSend = {}; // do not edit
 resultToSend["appId"] = "main"; 	// override with meta tag "glimpse-appId"
 // In order to request external (not from your domain) resources below, they must be served with the CORS header of "Access-Control-Allow-Origin: *"
 // To gather timing telemetry data, they must also include the timing CORS header of "Timing-Allow-Origin: *"
-var resourcesToTest = {
+var resourcesToTest = {			// override with meta tag "glimpse-externalTestUrl"
 	"amzncouk":  "https://images-eu.ssl-images-amazon.com/images/G/01/AUIClients/AmazonGatewayHerotatorJS-ed6ce4798415244198b464cf366c538b1f2f2537._V2_.css",
 	"githubC360pixel" : "https://raw.githubusercontent.com/cloudthreesixty/AWS_Hosted_Website/master/images/pixel.png",
 	"githubCDN" : "https://assets-cdn.github.com/assets/frameworks-d83d349f179c680b2beb431ca4362f9f.css"
@@ -18,6 +18,7 @@ var captureCookies = 0; 			// override with meta tag "glimpse-captureCookies"
 //****************************** DO NOT EDIT BLOW THIS LINE //******************************
 resultToSend["errors"] = [];
 var rumLoadEnd;
+var externalTestUrl = "";
 
 // Overrise default appId on a per page basis
 var m = document.getElementsByTagName('meta');
@@ -35,6 +36,9 @@ for(var i in m){
 		if (m[i].content == "true") {
 			captureCookies = 1;
 		}
+	}
+	if(m[i].name == "glimpse-externalTestUrl") {
+		externalTestUrl = m[i].content;
 	}
 }
 
@@ -226,12 +230,50 @@ function a () {
 
 	// Make external calls
 	resultToSend["res"] = {};
-	for (var resKey in resourcesToTest) {
-		if (resourcesToTest.hasOwnProperty(resKey)) {
-			b (resKey, resourcesToTest[resKey]);
-		}
-	}
 
+	if (externalTestUrl != "") {
+		var xhttp = new XMLHttpRequest();
+		xhttp.onreadystatechange = (function(x, url) {
+		    return function() {
+		    	if (x.readyState == 4) {
+		    		if (x.status == 200) {
+		    			console.log(x);
+						try {
+							resourcesToTest = JSON.parse(x.responseText);
+							for (var resKey in resourcesToTest) {
+								if (resourcesToTest.hasOwnProperty(resKey)) {
+									b (resKey, resourcesToTest[resKey]);
+								}
+							}
+
+						}
+						catch(err) {
+			    			var errorObj = {};
+			    			errorObj.errorSource = "GlimpseRUM";
+			    			errorObj.errorDescription = "unable to parse external test url: "+url+", error: "+err.message;
+			    			if (x.responseText) {
+			    				errorObj.responseText = x.responseText;
+			    			}
+			    			else {
+			    				errorObj.responseText = "<blank>";
+			    			}
+			    			resultToSend["errors"].push (errorObj);
+			    			r();
+						}
+		    		}
+		    		else {
+		    			var errorObj = {};
+		    			errorObj.errorSource = "GlimpseRUM";
+		    			errorObj.errorDescription = "unable to download external test url: "+url+", http status code: "+x.status;
+		    			resultToSend["errors"].push (errorObj);
+		    			r();
+		    		}
+		    	}
+		    }
+		   })(xhttp, externalTestUrl);
+		   xhttp.open("GET", externalTestUrl, false);
+		   xhttp.send(null);
+	}
 	// Call again in specified time
 	if (resultToSend["reload"] > 0) {
 		setTimeout(function(){ a(); }, resultToSend["reload"]*1000);

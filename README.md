@@ -37,6 +37,12 @@ This next setting will get capture the pages cookies:
 <meta name="glimpse-captureCookies" content="true"/>
 ```
 
+This setting will point the script to a json file with the external tests defined:
+
+```
+<meta name="glimpse-externalTestUrl" content="external.json"/>
+```
+
 ## Webserver Config and CORS
 In order to support testing external URLs, the webservers/CDNs of those URLs must set some CORS headers to allow the beacon to function
  correctly, these headers are:
