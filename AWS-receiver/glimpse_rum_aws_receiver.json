@@ -1,0 +1,158 @@
+{
+  "AWSTemplateFormatVersion" : "2010-09-09",
+
+  "Description" : "AWS CloudFormation Template to provision GlipseRUM Backend Beacon Collector",
+
+  "Parameters" : {
+    "SrcJSURL": {
+      "Description" : "GlipseRUM javascript file to be installed in the origin S3 bucket",
+      "Type": "String",
+      "Default" : "https://github.com/cloudthreesixty/GlimpseRUM/raw/master/rum.js"
+    },
+
+    "SrcBeaconURL": {
+      "Description" : "GlipseRUM image file to be installed in the origin S3 bucket",
+      "Type": "String",
+      "Default" : "https://github.com/cloudthreesixty/GlimpseRUM/raw/master/pixel.png"
+    },
+
+    "CFdistroFQDN": {
+      "Description" : "GlipseRUM cloudfront distribution's full qualified domain name to answer to",
+      "Type": "String",
+      "Default" : ""
+    },
+
+    "CertificateArn": {
+      "Description" : "Amazon Resource Name (ARN) of an existing SSL certificate stored in certificate manager for the host defined in CFdistroFQDN",
+      "Type": "String",
+      "Default" : ""
+    }
+
+  },
+
+  "Mappings" : {
+  },
+
+  "Resources" : {
+
+	"logsS3Bucket" : {
+		"Type": "AWS::S3::Bucket", 
+		"Properties": {
+		    "AccessControl": "LogDeliveryWrite",
+		    "LifecycleConfiguration": {
+		      "Rules": [
+		        {
+		          "Id": "DeleteEverythingInThreeMonths",
+		          "Prefix": "",
+		          "Status": "Enabled",
+		          "ExpirationInDays": "90"
+		        }
+		      ]
+		    }
+		}
+	},
+
+	"originS3Bucket" : {
+		"Type" : "AWS::S3::Bucket",
+		"Properties": {
+		    "AccessControl": "PublicRead",
+            "LoggingConfiguration": {
+                "DestinationBucketName" : { "Ref": "logsS3Bucket" },
+                "LogFilePrefix" : "s3-origin-logs/"
+            },
+		    "WebsiteConfiguration": {
+		        "IndexDocument": "index.html",
+		        "ErrorDocument": "error.html"
+		    },
+			"CorsConfiguration" : {
+				"CorsRules" : [
+					{
+						"AllowedHeaders" : [
+							"*"
+						],
+						"AllowedMethods" : [
+							"GET", "HEAD", "POST", "PUT"
+						],
+						"AllowedOrigins" : [
+							"*"
+						],
+						"MaxAge" : "300"
+					}
+				]
+			}
+		}
+	},
+
+
+	"dataS3Bucket" : {
+		"Type" : "AWS::S3::Bucket",
+		"Properties": {
+            "LoggingConfiguration": {
+                "DestinationBucketName" : { "Ref": "logsS3Bucket" },
+                "LogFilePrefix" : "s3-databucket-logs/"
+            }
+		}
+	},
+
+    "WebsiteWWWCDN": {
+        "Type": "AWS::CloudFront::Distribution", 
+        "Properties": {
+            "DistributionConfig": {
+                "Comment": "CDN for S3-backed website", 
+                "Aliases": [
+                	{"Ref":"CFdistroFQDN"}
+                ], 
+                "Enabled": "true", 
+                "DefaultCacheBehavior": {
+                	"Compress" : true,
+                    "ForwardedValues": {
+                        "QueryString": "true",
+                        "Headers": [
+                        	"Origin", "Access-Control-Request-Headers", "Access-Control-Request-Method"
+                        ]
+                    }, 
+                    "TargetOriginId": {"Ref":"CFdistroFQDN"}, 
+                    "ViewerProtocolPolicy": "redirect-to-https"
+                }, 
+                "Origins": [
+                    {
+                        "CustomOriginConfig": {
+                            "HTTPPort": "80", 
+                            "HTTPSPort": "443", 
+                            "OriginProtocolPolicy": "http-only"
+                        }, 
+                        "DomainName": {
+                            "Fn::Join": ["", [{"Ref":"originS3Bucket"}, ".s3-website.", {"Ref": "AWS::Region"}, ".amazonaws.com"]]
+                        },
+                        "Id":  { "Ref":"CFdistroFQDN"}
+                    }
+                ],
+                "PriceClass": "PriceClass_100",
+                "ViewerCertificate" : {
+                    "AcmCertificateArn": {"Ref":"CertificateArn"},
+                    "SslSupportMethod": "sni-only"
+                },
+                "Logging": {
+                    "IncludeCookies": "true",
+                    "Bucket": {
+                        "Fn::Join": ["", [{"Ref":"logsS3Bucket"}, ".s3.amazonaws.com"]]
+                    },
+                    "Prefix": "cloudfront-logs"
+                }
+            }
+        }
+    }
+  },
+
+  "Outputs" : {
+    "CloudFrontDomainNameToCNAME" : {
+      "Description" : "CloudFront Domain Name - CNAME to this",
+		"Value" : {
+			"Fn::GetAtt": [
+			    "WebsiteWWWCDN", 
+			    "DomainName"
+			]
+		}
+    }
+  }
+}

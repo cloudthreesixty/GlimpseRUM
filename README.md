@@ -25,6 +25,18 @@ ridden with another meta tag:
 <meta name="glimpse-beaconUrl" content="pixel.png"/>
 ```
 
+This next setting will get the page to re-run the test the specified number of seconds if greater than zero, so the following will run every 15 minutes:
+
+```
+<meta name="glimpse-reloadTime" content="900"/>
+```
+
+This next setting will get capture the pages cookies:
+
+```
+<meta name="glimpse-captureCookies" content="true"/>
+```
+
 ## Webserver Config and CORS
 In order to support testing external URLs, the webservers/CDNs of those URLs must set some CORS headers to allow the beacon to function
  correctly, these headers are:
@@ -32,9 +44,9 @@ In order to support testing external URLs, the webservers/CDNs of those URLs mus
  - Timing-Allow-Origin: * - this is needed to allow for detail Performance Timing data to be retrieved (this is optional)
 
 ## Processing received data
-The kind of data which comes back is below:
+The kind of data which comes back is below - this is a nginx log file:
 ```
-192.168.0.87 - - [30/Apr/2018:01:20:18 +0000] "GET /localdrive/Media/rumtest/pixel.png?eyJhcHBJZCI6Im1haW5QYWdlIiwiZXJyb3JzIjpbXSwiZG5zTXMiOjAsImxvYWRNcyI6NDY4LCJtb2RzIjpbInBlcmYiLCJpcCJdLCJick5hbWUiOiJDaHJvbWUiLCJiclZlciI6IjY2LjAuMzM1OS4xMzkiLCJickNvb2tpZXMiOnRydWUsIk9TIjoiV2luZG93cyIsInJlcyI6eyJhbXpuY291ayI6eyJzdGFydE1zIjoxNTI1MDUxMjIwMTQ3LCJzdGF0IjoyMDAsImR1ck1zIjoiMjMuMTAiLCJ0dGZiTXMiOiIyMi42MCIsImRuc01zIjoiMC4wMCIsInhmZXJCeXRlcyI6NDAxfSwiZ2l0aHViQzM2MHBpeGVsIjp7InN0YXJ0TXMiOjE1MjUwNTEyMjAxNDcsInN0YXQiOjIwMCwiZHVyTXMiOiIxMTMuMTAifSwiZ2l0aHViQ0ROIjp7InN0YXJ0TXMiOjE1MjUwNTEyMjAxNDcsInN0YXQiOjIwMCwiZHVyTXMiOiI0MDUuOTAiLCJ0dGZiTXMiOiI0MDUuMjAiLCJkbnNNcyI6IjAuMDAiLCJ4ZmVyQnl0ZXMiOjY0N319LCJjbElQIjoiMTkyLjE2OC4wLjg3In0= HTTP/1.1" 200 120 "http://coreos.local/localdrive/Media/rumtest/rumtest.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36"
+192.168.0.98 - - [05/May/2018:17:37:05 +0000] "GET /localdrive/Media/rumtest/pixel.png?eyJhcHBJZCI6Im1haW5QYWdlIiwiZXJyb3JzIjpbXSwiZG5zTXMiOjAsImxvYWRNcyI6NDk0LCJtb2RzIjpbInBlcmYiLCJpcCIsImNvb2tpZXMiXSwicmVsb2FkIjowLCJ1cmwiOiJodHRwOi8vY29yZW9zLmVsbGVtYW4uY28udWsvbG9jYWxkcml2ZS9NZWRpYS9ydW10ZXN0L3J1bXRlc3QuaHRtbCIsImJyTmFtZSI6IkNocm9tZSIsImJyVmVyIjoiNjYuMC4zMzU5LjEzOSIsImJyQ29va2llcyI6dHJ1ZSwiT1MiOiJXaW5kb3dzIiwiY29va2llcyI6eyJ0ZXN0Q29va2llIjoiZW1jYSJ9LCJyZXMiOnsiYW16bmNvdWsiOnsic3RhcnRNcyI6MTUyNTU0MTgyNDk1Nywic3RhdCI6MjAwLCJkdXJNcyI6IjIxLjAwIiwidHRmYk1zIjoiMjAuNzAiLCJkbnNNcyI6IjAuMDAiLCJ4ZmVyQnl0ZXMiOjQwMH0sImdpdGh1YkMzNjBwaXhlbCI6eyJzdGFydE1zIjoxNTI1NTQxODI0OTU3LCJzdGF0IjoyMDAsImR1ck1zIjoiMTM4LjkwIn0sImdpdGh1YkNETiI6eyJzdGFydE1zIjoxNTI1NTQxODI0OTU3LCJzdGF0IjoyMDAsImR1ck1zIjoiNDY3LjMwIiwidHRmYk1zIjoiNDY3LjAwIiwiZG5zTXMiOiIwLjAwIiwieGZlckJ5dGVzIjo2NDh9fSwiY2xJUCI6IjE5Mi4xNjguMC45OCJ9 HTTP/1.1" 200 120 "http://coreos.elleman.co.uk/localdrive/Media/rumtest/rumtest.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36"
 ```
 
 The data after the question mark is base64 encoded JSON, the above log decodes to the following JSON:
@@ -45,39 +57,45 @@ The data after the question mark is base64 encoded JSON, the above log decodes t
     
   ],
   "dnsMs": 0,
-  "loadMs": 468,
+  "loadMs": 494,
   "mods": [
     "perf",
-    "ip"
+    "ip",
+    "cookies"
   ],
+  "reload": 0,
+  "url": "http:\/\/coreos.elleman.co.uk\/localdrive\/Media\/rumtest\/rumtest.html",
   "brName": "Chrome",
   "brVer": "66.0.3359.139",
   "brCookies": true,
   "OS": "Windows",
+  "cookies": {
+    "testCookie": "emca"
+  },
   "res": {
     "amzncouk": {
-      "startMs": 1525051220147,
+      "startMs": 1525541824957,
       "stat": 200,
-      "durMs": "23.10",
-      "ttfbMs": "22.60",
+      "durMs": "21.00",
+      "ttfbMs": "20.70",
       "dnsMs": "0.00",
-      "xferBytes": 401
+      "xferBytes": 400
     },
     "githubC360pixel": {
-      "startMs": 1525051220147,
+      "startMs": 1525541824957,
       "stat": 200,
-      "durMs": "113.10"
+      "durMs": "138.90"
     },
     "githubCDN": {
-      "startMs": 1525051220147,
+      "startMs": 1525541824957,
       "stat": 200,
-      "durMs": "405.90",
-      "ttfbMs": "405.20",
+      "durMs": "467.30",
+      "ttfbMs": "467.00",
       "dnsMs": "0.00",
-      "xferBytes": 647
+      "xferBytes": 648
     }
   },
-  "clIP": "192.168.0.87"
+  "clIP": "192.168.0.98"
 }
 ```
 
@@ -89,10 +107,14 @@ The following fields are broken down:
  - mods - what Glimpse modules have been detected as being browser compatible
  - - perf - this is PerformanceTiming module
  - - ip - this is WebRTC support for getting the private IP
+ - - cookies - cookies are being captured if available
+ - reload - time (in secs) to re-run the tests
+ - url - the URL of the calling page
  - brName - browser name
  - brVer - broweser version
  - brCookiers - are cookies enabled
  - OS - what OS has been detected, this is basic detection but more detailed can be added use the user-agent from the beason request weblog
+ - cookies (array) - page cookies which have been captured
  - res (array) - these are results of the external site lookups which have been defined, the key is defined with the URL being tested
  - - startMs - epoch milliseconds when request started
  - - stat - http status code
@@ -110,6 +132,6 @@ In order to collect and query the data a serverless architecture has been define
 The deployment is documented in a cloudformation JSON template, in order to execure the template several parameters need to be specified:
 
  - SrcJSURL (String) - the javascript file to be installed in the origin S3 bucket, default is https://github.com/cloudthreesixty/GlimpseRUM/raw/master/rum.js
- - SrcBeaconURL (String) - the file to be installed in the origin S3 bucket, default is https://github.com/cloudthreesixty/GlimpseRUM/raw/master/pixel.png
+ - SrcBeaconURL (String) - the image file to be installed in the origin S3 bucket, default is https://github.com/cloudthreesixty/GlimpseRUM/raw/master/pixel.png
  - CFdistroFQDN (String) - the cloudfront distribution's full qualified domain name to answer to, example is www.example.com
  - CertificateArn (String) - the Amazon Resource Name (ARN) of an existing SSL certificate stored in certificate manager for the host defined in CFdistroFQDN

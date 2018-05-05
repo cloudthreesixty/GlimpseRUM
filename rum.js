@@ -2,7 +2,7 @@
 // Glimpse Real User Monitoring (RUM) Library
 var rumLoadStart = (new Date).getTime(); // do not edit
 var resultToSend = {}; // do not edit
-resultToSend["appId"] = "main";
+resultToSend["appId"] = "main"; 	// override with meta tag "glimpse-appId"
 // In order to request external (not from your domain) resources below, they must be served with the CORS header of "Access-Control-Allow-Origin: *"
 // To gather timing telemetry data, they must also include the timing CORS header of "Timing-Allow-Origin: *"
 var resourcesToTest = {
@@ -10,7 +10,9 @@ var resourcesToTest = {
 	"githubC360pixel" : "https://raw.githubusercontent.com/cloudthreesixty/AWS_Hosted_Website/master/images/pixel.png",
 	"githubCDN" : "https://assets-cdn.github.com/assets/frameworks-d83d349f179c680b2beb431ca4362f9f.css"
 };
-var beaconURL = "pixel.png";
+var beaconURL = "pixel.png"; 		// override with meta tag "glimpse-beaconUrl"
+var reloadTime = 0; 				// override with meta tag "glimpse-reloadTime"
+var captureCookies = 0; 			// override with meta tag "glimpse-captureCookies"
 
 
 //****************************** DO NOT EDIT BLOW THIS LINE //******************************
@@ -25,6 +27,14 @@ for(var i in m){
 	}
 	if(m[i].name == "glimpse-beaconUrl") {
 		beaconURL = m[i].content;
+	}
+	if(m[i].name == "glimpse-reloadTime") {
+		reloadTime = parseInt(m[i].content);
+	}
+	if(m[i].name == "glimpse-captureCookies") {
+		if (m[i].content == "true") {
+			captureCookies = 1;
+		}
 	}
 }
 
@@ -78,6 +88,8 @@ function a () {
 	resultToSend["mods"] = [];
 	resultToSend["fin"] = false;
 	resultToSend["resCnt"] = 0;
+	resultToSend["reload"] = reloadTime;
+	resultToSend["url"] = window.location.href;
 	if (window.performance) {
 		resultToSend["mods"].push ("perf");
 		resultToSend["dnsMs"] = window.performance.timing.domainLookupEnd - window.performance.timing.domainLookupStart;
@@ -198,12 +210,34 @@ function a () {
 		}
 	}
 
+	// Capture Cookies
+	if (captureCookies == 1) {
+		console.log("capture cookies");
+		resultToSend["mods"].push ("cookies");
+		resultToSend["cookies"] = {};
+		if (document.cookie) {
+			var pairs = document.cookie.split(";");
+			for (var i=0; i<pairs.length; i++){
+			var pair = pairs[i].split("=");
+			resultToSend["cookies"][(pair[0]+'').trim()] = unescape(pair[1]);
+			}
+		}
+	}
+
 	// Make external calls
 	resultToSend["res"] = {};
 	for (var resKey in resourcesToTest) {
 		if (resourcesToTest.hasOwnProperty(resKey)) {
 			b (resKey, resourcesToTest[resKey]);
 		}
+	}
+
+	// Call again in specified time
+	if (resultToSend["reload"] > 0) {
+		setTimeout(function(){ a(); }, resultToSend["reload"]*1000);
+	}
+	else {
+		console.log("Glimpse RUM finished");
 	}
 }
 
