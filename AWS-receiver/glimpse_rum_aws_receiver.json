@@ -234,6 +234,8 @@
             "            contentType = 'image/png'\n",
             "          if (fileExt == 'jpg'):\n",
             "            contentType = 'image/jpeg'\n",
+            "          if (fileExt == 'html'):\n",
+            "            contentType = 'text/html'\n",
             "          response = urllib.request.urlopen(url)\n",
             "          data = response.read()\n",
             "          print ('got data: '+filename+' sending to bucket: '+bucket)\n",
@@ -244,7 +246,7 @@
             "        cfnresponse.send(event, context, cfnresponse.FAILURE, {})\n",
             "        raise e\n",
             "    if event['RequestType'] == 'Delete':\n",
-            "      print('Delete objects in bucket: ",{ "Ref" : "originS3Bucket" },"')\n",
+            "      print('Delete objects in bucket: '+bucket)\n",
             "      try:\n",
             "        print('Deleting files: ')\n",
             "      except Exception as e:\n",
@@ -272,6 +274,67 @@
             "Await": false,
             "ServiceToken": { "Fn::GetAtt" : [ "ResourceS3DeployFilesFunction", "Arn" ]}
         }
+    },
+
+    "LambdaS3EventExecutionRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+            "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": ["lambda.amazonaws.com"]
+                    },
+                    "Action": ["sts:AssumeRole"]
+                  }
+                ]
+            },
+            "Path": "/"
+        }
+    },
+
+    "LambdaEventExecutionPolicy": {
+        "DependsOn": [
+            "LambdaS3EventExecutionRole"
+        ],
+        "Type": "AWS::IAM::Policy",
+        "Properties": {
+          "PolicyName": "LambdaBillingS3",
+          "Roles": [
+              {"Ref": "LambdaS3EventExecutionRole"}
+          ],
+          "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": ["logs:*"],
+                  "Resource": ["arn:aws:logs:*:*:*"]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                      "s3:GetObject"
+                  ],
+                  "Resource": { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "logsS3Bucket" }, "/*" ] ]}
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "s3:GetObject",
+					"s3:PutObject",
+					"s3:PutObjectAcl",
+					"s3:PutObjectTagging",
+					"s3:PutObjectVersionAcl",
+					"s3:PutObjectVersionTagging"
+                  ],
+                  "Resource": { "Fn::Join" : [ "", [ "arn:aws:s3:::", { "Ref" : "dataS3Bucket" }, "/*" ] ]}
+                }
+              ]
+          }
+      }
     }
   },
 

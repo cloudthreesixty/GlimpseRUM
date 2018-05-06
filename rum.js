@@ -229,7 +229,7 @@ function a () {
 	}
 
 	// Make external calls
-	resultToSend["res"] = {};
+	resultToSend["res"] = [];
 
 	if (externalTestUrl != "") {
 		var xhttp = new XMLHttpRequest();
@@ -285,14 +285,16 @@ function a () {
 
 
 function b (resKey, url) {
-	resultToSend["res"][resKey] = {};
-	resultToSend["res"][resKey]["startMs"] = (new Date).getTime();
+	var resultObj = {};
+	resultObj["resKey"] = resKey;
+	resultObj["url"] = url;
+	resultObj["startMs"] = (new Date).getTime();
 	var xhttp = new XMLHttpRequest();
 	xhttp.onreadystatechange = (function(x, k) {
 	    return function() {
 	    	if (x.readyState == 4) {
 	    		var end = (new Date).getTime();
-	    		resultToSend["res"][k]["stat"] = x.status
+	    		k["status"] = x.status
 				// check performance data - find entry based on requsted URL
 				if (window.performance) {
 					var resources = window.performance.getEntriesByType('resource');
@@ -303,25 +305,26 @@ function b (resKey, url) {
 					if (p1Resources.length > 0) {
 						console.log(p1Resources[0]);
 						if (p1Resources[0].duration > 0) {
-							resultToSend["res"][k]["durMs"] = (p1Resources[0].duration).toFixed(2);
+							k["durMs"] = (p1Resources[0].duration).toFixed(2);
 						}
 						if (p1Resources[0].requestStart > 0) {
-							resultToSend["res"][k]["ttfbMs"] = (p1Resources[0].responseStart - p1Resources[0].startTime).toFixed(2);
+							k["ttfbMs"] = (p1Resources[0].responseStart - p1Resources[0].startTime).toFixed(2);
 						}
 						if (p1Resources[0].domainLookupEnd > 0) {
-							resultToSend["res"][k]["dnsMs"] = (p1Resources[0].domainLookupEnd - p1Resources[0].domainLookupStart).toFixed(2);
+							k["dnsMs"] = (p1Resources[0].domainLookupEnd - p1Resources[0].domainLookupStart).toFixed(2);
 						}
 						if (p1Resources[0].transferSize > 0) {
-							resultToSend["res"][k]["xferBytes"] = p1Resources[0].transferSize;
+							k["xferBytes"] = p1Resources[0].transferSize;
 						}
 					}
 					else {
-						resultToSend["res"][k]["durMs"] = end - resultToSend["res"][k]["startMs"];
+						k["durMs"] = end - resultToSend["res"][k]["startMs"];
 					}
 				}
 				else {
-					resultToSend["res"][k]["durMs"] = end - resultToSend["res"][k]["startMs"];
+					k["durMs"] = end - resultToSend["res"][k]["startMs"];
 				}
+				resultToSend["res"].push(k);
 				resultToSend["resCnt"]++;
 				// if all done then send data back to beacon
 				if (resultToSend["resCnt"] >= Object.keys(resourcesToTest).length) {
@@ -330,7 +333,7 @@ function b (resKey, url) {
 				}
 	    	}
 	    }
-	})(xhttp, resKey);
+	})(xhttp, resultObj);
 	// add random element to URL to avoid cached responses
 	xhttp.open("HEAD", url+"?randoMRandomrandoM="+(new Date).getTime(), true);
 	xhttp.send(null);
