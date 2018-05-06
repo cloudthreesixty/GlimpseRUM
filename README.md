@@ -52,7 +52,7 @@ In order to support testing external URLs, the webservers/CDNs of those URLs mus
 ## Processing received data
 The kind of data which comes back is below - this is a nginx log file:
 ```
-192.168.0.98 - - [05/May/2018:17:37:05 +0000] "GET /localdrive/Media/rumtest/pixel.png?eyJhcHBJZCI6Im1haW5QYWdlIiwiZXJyb3JzIjpbXSwiZG5zTXMiOjAsImxvYWRNcyI6NDk0LCJtb2RzIjpbInBlcmYiLCJpcCIsImNvb2tpZXMiXSwicmVsb2FkIjowLCJ1cmwiOiJodHRwOi8vY29yZW9zLmVsbGVtYW4uY28udWsvbG9jYWxkcml2ZS9NZWRpYS9ydW10ZXN0L3J1bXRlc3QuaHRtbCIsImJyTmFtZSI6IkNocm9tZSIsImJyVmVyIjoiNjYuMC4zMzU5LjEzOSIsImJyQ29va2llcyI6dHJ1ZSwiT1MiOiJXaW5kb3dzIiwiY29va2llcyI6eyJ0ZXN0Q29va2llIjoiZW1jYSJ9LCJyZXMiOnsiYW16bmNvdWsiOnsic3RhcnRNcyI6MTUyNTU0MTgyNDk1Nywic3RhdCI6MjAwLCJkdXJNcyI6IjIxLjAwIiwidHRmYk1zIjoiMjAuNzAiLCJkbnNNcyI6IjAuMDAiLCJ4ZmVyQnl0ZXMiOjQwMH0sImdpdGh1YkMzNjBwaXhlbCI6eyJzdGFydE1zIjoxNTI1NTQxODI0OTU3LCJzdGF0IjoyMDAsImR1ck1zIjoiMTM4LjkwIn0sImdpdGh1YkNETiI6eyJzdGFydE1zIjoxNTI1NTQxODI0OTU3LCJzdGF0IjoyMDAsImR1ck1zIjoiNDY3LjMwIiwidHRmYk1zIjoiNDY3LjAwIiwiZG5zTXMiOiIwLjAwIiwieGZlckJ5dGVzIjo2NDh9fSwiY2xJUCI6IjE5Mi4xNjguMC45OCJ9 HTTP/1.1" 200 120 "http://coreos.elleman.co.uk/localdrive/Media/rumtest/rumtest.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36"
+192.168.0.98 - - [05/May/2018:17:37:05 +0000] "GET /localdrive/Media/rumtest/pixel.png?ew0KICAiYXBwSWQiOiAibWFpblBhZ2UiLA0KICAiZXJyb3JzIjogWw0KICAgIA0KICBdLA0KICAiZG5zTXMiOiAzNCwNCiAgImxvYWRNcyI6IDQ2MywNCiAgIm1vZHMiOiBbDQogICAgInBlcmYiLA0KICAgICJpcCIsDQogICAgImNvb2tpZXMiDQogIF0sDQogICJyZWxvYWQiOiAwLA0KICAidXJsIjogImh0dHA6XC9cL2NvcmVvcy5lbGxlbWFuLmNvLnVrXC9sb2NhbGRyaXZlXC9NZWRpYVwvcnVtdGVzdFwvcnVtdGVzdC5odG1sIiwNCiAgImJyTmFtZSI6ICJDaHJvbWUiLA0KICAiYnJWZXIiOiAiNjYuMC4zMzU5LjEzOSIsDQogICJickNvb2tpZXMiOiB0cnVlLA0KICAiT1MiOiAiV2luZG93cyIsDQogICJjb29raWVzIjogew0KICAgICJ0ZXN0Q29va2llIjogImVtY2EiDQogIH0sDQogICJnZW9JUCI6IHsNCiAgICAiaXAiOiAiODYuMjIueC54IiwNCiAgICAiaG9zdG5hbWUiOiAieHgudmlyZ2lubS5uZXQiLA0KICAgICJjaXR5IjogIkJ1cm5oYW0iLA0KICAgICJyZWdpb24iOiAiQnVja2luZ2hhbXNoaXJlIiwNCiAgICAiY291bnRyeSI6ICJHQiIsDQogICAgImxvYyI6ICI1MS41MTY3LC0wLjY1MDAiLA0KICAgICJwb3N0YWwiOiAiU0wxIiwNCiAgICAib3JnIjogIkFTNTA4OSBWaXJnaW4gTWVkaWEgTGltaXRlZCINCiAgfSwNCiAgInJlcyI6IFsNCiAgICB7DQogICAgICAicmVzS2V5IjogImFtem5jb3VrIiwNCiAgICAgICJ1cmwiOiAiaHR0cHM6XC9cL2ltYWdlcy1ldS5zc2wtaW1hZ2VzLWFtYXpvbi5jb21cL2ltYWdlc1wvR1wvMDFcL0FVSUNsaWVudHNcL0FtYXpvbkdhdGV3YXlIZXJvdGF0b3JKUy1lZDZjZTQ3OTg0MTUyNDQxOThiNDY0Y2YzNjZjNTM4YjFmMmYyNTM3Ll9WMl8uY3NzIiwNCiAgICAgICJzdGFydE1zIjogMTUyNTY0MDEwNTEyMywNCiAgICAgICJzdGF0dXMiOiAyMDAsDQogICAgICAiZHVyTXMiOiAiNDEuNzAiLA0KICAgICAgInR0ZmJNcyI6ICI0MS40MCIsDQogICAgICAiZG5zTXMiOiAiMC4wMCIsDQogICAgICAieGZlckJ5dGVzIjogNDAwDQogICAgfSwNCiAgICB7DQogICAgICAicmVzS2V5IjogImdpdGh1YkMzNjBwaXhlbCIsDQogICAgICAidXJsIjogImh0dHBzOlwvXC9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tXC9jbG91ZHRocmVlc2l4dHlcL0FXU19Ib3N0ZWRfV2Vic2l0ZVwvbWFzdGVyXC9pbWFnZXNcL3BpeGVsLnBuZyIsDQogICAgICAic3RhcnRNcyI6IDE1MjU2NDAxMDUxMjMsDQogICAgICAic3RhdHVzIjogMjAwLA0KICAgICAgImR1ck1zIjogIjEzMy42MCINCiAgICB9DQogIF0sDQogICJjbElQIjogIjE5Mi4xNjguMC45OCINCn0= HTTP/1.1" 200 120 "http://coreos.elleman.co.uk/localdrive/Media/rumtest/rumtest.html" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36"
 ```
 
 The data after the question mark is base64 encoded JSON, the above log decodes to the following JSON:
@@ -62,8 +62,8 @@ The data after the question mark is base64 encoded JSON, the above log decodes t
   "errors": [
     
   ],
-  "dnsMs": 0,
-  "loadMs": 494,
+  "dnsMs": 34,
+  "loadMs": 463,
   "mods": [
     "perf",
     "ip",
@@ -78,29 +78,35 @@ The data after the question mark is base64 encoded JSON, the above log decodes t
   "cookies": {
     "testCookie": "emca"
   },
-  "res": {
-    "amzncouk": {
-      "startMs": 1525541824957,
-      "stat": 200,
-      "durMs": "21.00",
-      "ttfbMs": "20.70",
+  "geoIP": {
+    "ip": "86.22.x.x",
+    "hostname": "xx.virginm.net",
+    "city": "Burnham",
+    "region": "Buckinghamshire",
+    "country": "GB",
+    "loc": "51.5167,-0.6500",
+    "postal": "SL1",
+    "org": "AS5089 Virgin Media Limited"
+  },
+  "res": [
+    {
+      "resKey": "amzncouk",
+      "url": "https:\/\/images-eu.ssl-images-amazon.com\/images\/G\/01\/AUIClients\/AmazonGatewayHerotatorJS-ed6ce4798415244198b464cf366c538b1f2f2537._V2_.css",
+      "startMs": 1525640105123,
+      "status": 200,
+      "durMs": "41.70",
+      "ttfbMs": "41.40",
       "dnsMs": "0.00",
       "xferBytes": 400
     },
-    "githubC360pixel": {
-      "startMs": 1525541824957,
-      "stat": 200,
-      "durMs": "138.90"
-    },
-    "githubCDN": {
-      "startMs": 1525541824957,
-      "stat": 200,
-      "durMs": "467.30",
-      "ttfbMs": "467.00",
-      "dnsMs": "0.00",
-      "xferBytes": 648
+    {
+      "resKey": "githubC360pixel",
+      "url": "https:\/\/raw.githubusercontent.com\/cloudthreesixty\/AWS_Hosted_Website\/master\/images\/pixel.png",
+      "startMs": 1525640105123,
+      "status": 200,
+      "durMs": "133.60"
     }
-  },
+  ],
   "clIP": "192.168.0.98"
 }
 ```
@@ -121,6 +127,7 @@ The following fields are broken down:
  - brCookiers - are cookies enabled
  - OS - what OS has been detected, this is basic detection but more detailed can be added use the user-agent from the beason request weblog
  - cookies (array) - page cookies which have been captured
+ - geoIP (array) - geoIP lookup performed from client, using https://ipinfo.io/, its not that accurate to city but got the country OK
  - res (array) - these are results of the external site lookups which have been defined, the key is defined with the URL being tested
  - - startMs - epoch milliseconds when request started
  - - stat - http status code
@@ -141,3 +148,81 @@ The deployment is documented in a cloudformation JSON template, in order to exec
  - SrcBeaconURL (String) - the image file to be installed in the origin S3 bucket, default is https://github.com/cloudthreesixty/GlimpseRUM/raw/master/pixel.png
  - CFdistroFQDN (String) - the cloudfront distribution's full qualified domain name to answer to, example is www.example.com
  - CertificateArn (String) - the Amazon Resource Name (ARN) of an existing SSL certificate stored in certificate manager for the host defined in CFdistroFQDN
+
+The template outputs the following information:
+ - CloudFrontDomainNameToCNAME - the CloudFront Distribution DNS NAME, you should update the CFdistroFQDN to CNAME to this
+ - S3dataBucketName - the S3 bucket where the processed logs will be, you can use Amazon Athena or Hive to query these logs
+
+## Using Amazon Athena
+
+In order to query the log set you need to tell Athena what the data format is, in order to generate a skeleton DDL I used a tool from here https://github.com/xtaci/json2hive, and then manually tweaked to the DDL below:
+```
+CREATE EXTERNAL TABLE logs (
+  `date` STRING,
+  time STRING,
+  x_edge_location STRING,
+  sc_bytes STRING,
+  c_ip STRING,
+  cs_method STRING,
+  cs_host STRING,
+  cs_uri_stem STRING,
+  sc_status STRING,
+  cs_referer STRING,
+  cs_user_agent STRING,
+  cs_uri_query 
+    STRUCT<
+    errors:
+      ARRAY<
+        MAP<STRING, STRING>>,
+    url:STRING,
+    res:
+      ARRAY<
+        STRUCT<
+        status:INT,
+        durMs:STRING,
+        ttfbMs:STRING,
+        dnsMs:STRING,
+        xferBytes:INT,
+        resKey:STRING,
+        url:STRING,
+        startMs:BIGINT>>,
+    mods:
+      ARRAY<STRING>,
+    geoIP:
+      STRUCT<
+      ip:STRING,
+      hostname:STRING,
+      city:STRING,
+      region:STRING,
+      country:STRING,
+      loc:STRING,
+      postal:STRING,
+      org:STRING
+      >,
+    dnsMs:INT,
+    loadMs:INT,
+    brVer:STRING,
+    OS:STRING,
+    clIP:STRING,
+    appId:STRING,
+    reload:INT,
+    brName:STRING,
+    brCookies:BOOLEAN>,
+  cs_cookie STRING,
+  x_edge_result_type STRING,
+  x_edge_request_id STRING,
+  x_host_header STRING,
+  cs_protocol STRING,
+  cs_bytes STRING,
+  time_taken STRING,
+  x_forwarded_for STRING,
+  ssl_protocol STRING,
+  ssl_cipher STRING,
+  x_edge_response_result_type STRING,
+  cs_protocol_version STRING,
+  fle_status STRING,
+  fle_encrypted_fields STRING
+)
+ROW FORMAT SERDE 'org.openx.data.jsonserde.JsonSerDe'
+LOCATION 's3://{S3dataBucketName}/cloudfront-logs/';
+```

@@ -48,6 +48,20 @@
 		          "ExpirationInDays": "90"
 		        }
 		      ]
+		    },
+		    "NotificationConfiguration" : {
+		      "LambdaConfigurations" : [{
+		        "Function" : { "Fn::GetAtt" : ["CloudFrontLogsProcessFunction", "Arn"] },
+		        "Event" : "s3:ObjectCreated:*",
+		        "Filter" : {
+		          "S3Key" : {
+		            "Rules" : [{
+		              "Name" : "prefix",
+		              "Value" : "cloudfront-logs/"
+		            }]
+		          }
+		        }
+		      }]
 		    }
 		}
 	},
@@ -85,13 +99,7 @@
 
 
 	"dataS3Bucket" : {
-		"Type" : "AWS::S3::Bucket",
-		"Properties": {
-            "LoggingConfiguration": {
-                "DestinationBucketName" : { "Ref": "logsS3Bucket" },
-                "LogFilePrefix" : "s3-databucket-logs/"
-            }
-		}
+		"Type" : "AWS::S3::Bucket"
 	},
 
     "WebsiteWWWCDN": {
@@ -258,13 +266,13 @@
             ]]
           }
         },
-        "Description" : "Apply notification config to consolidated billing bucket",
+        "Description" : "Upload resources from github to S3 bucket",
         "FunctionName" : "ResourceS3DeployFilesFunction",
         "Handler" : "index.lambda_handler",
         "MemorySize" : 128,
         "Role" : { "Fn::GetAtt" : [ "LambdaResourceDeployExecutionRole", "Arn" ]},
         "Runtime" : "python3.6",
-        "Timeout" : 20
+        "Timeout" : 30
       }
     },
 
@@ -335,6 +343,101 @@
               ]
           }
       }
+    },
+
+    "CloudFrontLogsProcessFunction": {
+      "DependsOn": [
+          "LambdaS3EventExecutionRole"
+      ],
+      "Type" : "AWS::Lambda::Function",
+      "Properties" : {
+        "Code" : {
+          "ZipFile": { "Fn::Join": ["", [
+            "from __future__ import print_function\n",
+            "import json, urllib.parse, boto3, gzip, base64\n",
+            "\n",
+            "print('Loading function')\n",
+            "s3 = boto3.resource('s3')\n",
+            "def lambda_handler(event, context):\n",
+            "    print('Received event: ' + json.dumps(event, indent=2))\n",
+            "    for record in event['Records']:\n",
+            "        # Get the object from the event and show its content type\n",
+            "        bucket = record['s3']['bucket']['name']\n",
+            "        key = urllib.parse.unquote_plus(record['s3']['object']['key'], encoding='utf-8')\n",
+            "        dstBucket = '",{ "Ref" : "dataS3Bucket" },"'\n",
+            "        print ('key: '+key)\n",
+            "        try:\n",
+            "            s3.Bucket(bucket).download_file(key, '/tmp/my_local.gz')\n",
+            "            with gzip.open('/tmp/my_local.gz', 'rb') as f:\n",
+            "                file_content = f.readlines()\n",
+            "            #print (file_content)\n",
+            "            indexFields = []\n",
+            "            files_dict = dict()\n",
+            "            file_key_map = dict()\n",
+            "            for line in file_content:\n",
+            "                line = str(line, 'utf-8').rstrip('\\n')\n",
+            "                if line.find('#Fields:') == 0:\n",
+            "                    # create index\n",
+            "                    ndxFields = line.split(' ')\n",
+            "                    for ndx in ndxFields:\n",
+            "                        if (ndx != '#Fields:'):\n",
+            "                            ndx = ndx.replace ('(', '-')\n",
+            "                            ndx = ndx.replace (')', '')\n",
+            "                            ndx = ndx.replace ('-', '_')\n",
+            "                            indexFields.append(ndx.lower())\n",
+            "                    #print (json.dumps(indexFields))\n",
+            "                if line.find('#') != 0:\n",
+            "                    cols = line.split('\t')\n",
+            "                    if cols[7] == '/pixel.png':\n",
+            "                        outputLine = dict()\n",
+            "                        counter = 0\n",
+            "                        for col in cols:\n",
+            "                            if indexFields[counter] == 'cs_uri_query':\n",
+            "                                outputLine[indexFields[counter]] = json.loads(str(base64.b64decode(col), 'utf-8'))\n",
+            "                            else:\n",
+            "                                outputLine[indexFields[counter]] = col\n",
+            "                            counter += 1\n",
+            "                        #print (json.dumps(outputLine))\n",
+            "                        # Build dst file key\n",
+            "                        splitKey = key.split('/')\n",
+            "                        timeSplit = outputLine['time'].split(':')\n",
+            "                        fileNdx = 'processed_'+outputLine['date']+splitKey[-1]\n",
+            "                        dateSplit = outputLine['date'].split('-')\n",
+            "                        dstKey = splitKey[0]+'/'+dateSplit[0]+'/'+dateSplit[1]+'/'+dateSplit[2]+'/'+fileNdx\n",
+            "                        print ('dstKey: '+dstKey+' fileNdx:'+fileNdx)\n",
+            "                        if fileNdx in file_key_map:\n",
+            "                            file_key_map[fileNdx]['uncompressed'] += '\\n'+str(json.dumps(outputLine))\n",
+            "                        else:\n",
+            "                            file_key_map[fileNdx] = dict()\n",
+            "                            file_key_map[fileNdx]['key'] = dstKey\n",
+            "                            file_key_map[fileNdx]['uncompressed'] = str(json.dumps(outputLine))\n",
+            "                        #print ('dstKey: '+dstKey+' fileNdx:'+fileNdx)\n",
+            "            for fileNdx in file_key_map:\n",
+            "                # write out gzip'd file\n",
+            "                output = gzip.open('/tmp/'+fileNdx, 'wb')\n",
+            "                try:\n",
+            "                    output.write(file_key_map[fileNdx]['uncompressed'].encode())\n",
+            "                finally:\n",
+            "                    output.close()\n",
+            "                print ('write file to bucket: '+dstBucket+' key:'+file_key_map[fileNdx]['key'])\n",
+            "                data = open('/tmp/'+fileNdx, 'rb')\n",
+            "                s3.Bucket(dstBucket).put_object(Key=file_key_map[fileNdx]['key'], Body=data)\n",
+            "                data.close()\n",
+            "        except Exception as e:\n",
+            "            print(e)\n",
+            "            print('Error getting object {} from bucket {}. Make sure they exist and your bucket is in the same region as this function.'.format(key, bucket))\n",
+            "            raise e\n"
+            ]]
+          }
+        },
+        "Description" : "Process CloudFront logs into athena compatible",
+        "FunctionName" : "CloudFrontLogsProcessFunction",
+        "Handler" : "index.lambda_handler",
+        "MemorySize" : 512,
+        "Role" : { "Fn::GetAtt" : [ "LambdaS3EventExecutionRole", "Arn" ]},
+        "Runtime" : "python3.6",
+        "Timeout" : 60
+      }
     }
   },
 
@@ -347,6 +450,10 @@
 			    "DomainName"
 			]
 		}
+    },
+    "S3dataBucketName": {
+      "Description" : "S3 bucket where the processed logs will be",
+		"Value" : { "Ref": "dataS3Bucket" }
     }
   }
 }

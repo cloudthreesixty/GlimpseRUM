@@ -19,6 +19,7 @@ var captureCookies = 0; 			// override with meta tag "glimpse-captureCookies"
 resultToSend["errors"] = [];
 var rumLoadEnd;
 var externalTestUrl = "";
+var geoIPlookupUrl = "https://ipinfo.io/json";
 
 // Overrise default appId on a per page basis
 var m = document.getElementsByTagName('meta');
@@ -228,52 +229,94 @@ function a () {
 		}
 	}
 
-	// Make external calls
-	resultToSend["res"] = [];
-
-	if (externalTestUrl != "") {
-		var xhttp = new XMLHttpRequest();
-		xhttp.onreadystatechange = (function(x, url) {
-		    return function() {
-		    	if (x.readyState == 4) {
-		    		if (x.status == 200) {
-		    			console.log(x);
-						try {
-							resourcesToTest = JSON.parse(x.responseText);
-							for (var resKey in resourcesToTest) {
-								if (resourcesToTest.hasOwnProperty(resKey)) {
-									b (resKey, resourcesToTest[resKey]);
-								}
-							}
-
-						}
-						catch(err) {
-			    			var errorObj = {};
-			    			errorObj.errorSource = "GlimpseRUM";
-			    			errorObj.errorDescription = "unable to parse external test url: "+url+", error: "+err.message;
-			    			if (x.responseText) {
-			    				errorObj.responseText = x.responseText;
-			    			}
-			    			else {
-			    				errorObj.responseText = "<blank>";
-			    			}
-			    			resultToSend["errors"].push (errorObj);
-			    			r();
-						}
-		    		}
-		    		else {
+	// Do GeoIP Lookup
+	var xhttp = new XMLHttpRequest();
+	xhttp.onreadystatechange = (function(x, url) {
+	    return function() {
+	    	if (x.readyState == 4) {
+	    		if (x.status == 200) {
+	    			console.log(x);
+					try {
+						resultToSend["geoIP"] = JSON.parse(x.responseText);
+					}
+					catch(err) {
 		    			var errorObj = {};
 		    			errorObj.errorSource = "GlimpseRUM";
-		    			errorObj.errorDescription = "unable to download external test url: "+url+", http status code: "+x.status;
+		    			errorObj.errorDescription = "unable to parse geoIP url: "+url+", error: "+err.message;
+		    			if (x.responseText) {
+		    				errorObj.responseText = x.responseText;
+		    			}
+		    			else {
+		    				errorObj.responseText = "<blank>";
+		    			}
 		    			resultToSend["errors"].push (errorObj);
 		    			r();
-		    		}
-		    	}
-		    }
-		   })(xhttp, externalTestUrl);
-		   xhttp.open("GET", externalTestUrl, false);
-		   xhttp.send(null);
-	}
+					}
+	    		}
+	    		else {
+	    			var errorObj = {};
+	    			errorObj.errorSource = "GlimpseRUM";
+	    			errorObj.errorDescription = "unable to download geoIP url: "+url+", http status code: "+x.status;
+	    			resultToSend["errors"].push (errorObj);
+	    		}
+				// Make external calls
+				resultToSend["res"] = [];
+				if (externalTestUrl != "") {
+					var xhttp = new XMLHttpRequest();
+					xhttp.onreadystatechange = (function(x, url) {
+					    return function() {
+					    	if (x.readyState == 4) {
+					    		if (x.status == 200) {
+					    			//console.log(x);
+									try {
+										resourcesToTest = JSON.parse(x.responseText);
+										for (var resKey in resourcesToTest) {
+											if (resourcesToTest.hasOwnProperty(resKey)) {
+												b (resKey, resourcesToTest[resKey]);
+											}
+										}
+
+									}
+									catch(err) {
+						    			var errorObj = {};
+						    			errorObj.errorSource = "GlimpseRUM";
+						    			errorObj.errorDescription = "unable to parse external test url: "+url+", error: "+err.message;
+						    			if (x.responseText) {
+						    				errorObj.responseText = x.responseText;
+						    			}
+						    			else {
+						    				errorObj.responseText = "<blank>";
+						    			}
+						    			resultToSend["errors"].push (errorObj);
+						    			r();
+									}
+					    		}
+					    		else {
+					    			var errorObj = {};
+					    			errorObj.errorSource = "GlimpseRUM";
+					    			errorObj.errorDescription = "unable to download external test url: "+url+", http status code: "+x.status;
+					    			resultToSend["errors"].push (errorObj);
+					    			r();
+					    		}
+					    	}
+					    }
+					   })(xhttp, externalTestUrl);
+					   xhttp.open("GET", externalTestUrl, false);
+					   xhttp.send(null);
+				}
+				else {
+					for (var resKey in resourcesToTest) {
+						if (resourcesToTest.hasOwnProperty(resKey)) {
+							b (resKey, resourcesToTest[resKey]);
+						}
+					}
+				}
+	    	}
+	    }		
+	})(xhttp, geoIPlookupUrl);
+	xhttp.open("GET", geoIPlookupUrl, false);
+	xhttp.send(null);
+
 	// Call again in specified time
 	if (resultToSend["reload"] > 0) {
 		setTimeout(function(){ a(); }, resultToSend["reload"]*1000);
